@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="FontPeek - Live Font Inspector tool to analyze fonts on any webpage">
+  <meta name="keywords" content="font inspector, web typography, CSS analyzer, font finder">
+  <meta name="author" content="FontPeek">
+  <meta property="og:title" content="FontPeek - Live Font Inspector">
+  <meta property="og:description" content="Inspect fonts on any webpage with this live font inspector tool">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#1f1f1f">
+  
+  <title>FontPeek Pro - Advanced Font Inspector</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="urlAnalyzer">
+  <h2>URL Analyzer</h2>
+  <div class="input-group">
+    <input type="text" id="urlInput" placeholder="Enter URL (e.g., https://example.com)">
+    <button id="fetchBtn">Analyze URL</button>
+  </div>
+  <div id="urlStatus"></div>
+</div>
+
+<div id="infoPanel">
+  <h2>Font Inspector</h2>
+  <div class="button-group">
+    <button onclick="copyCSS()">Copy CSS</button>
+    <button onclick="exportAsPDF()">Export PDF</button>
+    <button onclick="exportAsJSON()">Export JSON</button>
+    <button onclick="uploadHTML()">Upload HTML</button>
+  </div>
+  <div id="fontInfo">Click any element to inspect...</div>
+</div>
+<div id="highlightBox"></div>
+
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">☀️</button>
+
+<input type="file" id="htmlUpload" accept=".html,.htm" style="display: none;">
+
+<script src="script.js"></script>
+
+</body>
+</html>
