@@ -14,13 +14,14 @@ let latestCSS = '';
 let currentElement = null;
 let fontData = {};
 let currentHTMLContent = '';
+let activeIframe = null;
 
 // Initialize the application
 function init() {
   initTheme();
   setupEventListeners();
   setCurrentYear();
-  activateInfoPanel();
+  showAlert('Welcome to FontPeek Pro! Click any element to inspect its fonts.', 'info');
 }
 
 // Initialize theme
@@ -50,11 +51,6 @@ function setCurrentYear() {
   currentYear.textContent = new Date().getFullYear();
 }
 
-// Activate info panel
-function activateInfoPanel() {
-  infoPanel.classList.add('active');
-}
-
 // Setup event listeners
 function setupEventListeners() {
   themeToggle.addEventListener('click', toggleTheme);
@@ -73,55 +69,85 @@ async function fetchAndAnalyzeURL() {
     return;
   }
 
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    showStatus('Please include http:// or https://', 'error');
+    return;
+  }
+
   try {
     showStatus('Fetching URL content...', 'loading');
+    fetchBtn.disabled = true;
+    fetchBtn.innerHTML = '<span class="spinner"></span> Loading...';
     
+    // Clean up previous iframe if exists
+    if (activeIframe) {
+      document.body.removeChild(activeIframe);
+      activeIframe = null;
+    }
+
     // Use a proxy to avoid CORS issues
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
     
     if (!response.ok) {
-      throw new Error('Failed to fetch URL');
+      throw new Error('Failed to fetch URL. Please try another URL or check your internet connection.');
     }
 
     const data = await response.json();
     currentHTMLContent = data.contents;
     
     // Create a sandboxed iframe to parse the HTML
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+    activeIframe = document.createElement('iframe');
+    activeIframe.sandbox = 'allow-same-origin';
+    activeIframe.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      z-index: 9990;
+      background: white;
+    `;
+    document.body.appendChild(activeIframe);
     
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(`
+    activeIframe.contentDocument.open();
+    activeIframe.contentDocument.write(`
       <!DOCTYPE html>
       <html>
       <head>
         <base href="${url}" target="_blank">
         <style>
-          * { cursor: crosshair !important; }
-          :hover { outline: 2px dashed #4a6fa5 !important; }
+          * { 
+            cursor: crosshair !important; 
+          }
+          :hover { 
+            outline: 2px dashed ${getComputedStyle(document.documentElement).getPropertyValue('--highlight-color')} !important; 
+          }
+          body {
+            margin: 0;
+            padding: 20px;
+          }
         </style>
       </head>
       <body>${currentHTMLContent}</body>
       </html>
     `);
-    iframe.contentDocument.close();
+    activeIframe.contentDocument.close();
     
     // Initialize inspection on the iframe content
-    initializeElementInspection(iframe.contentDocument.body);
+    initializeElementInspection(activeIframe.contentDocument.body);
     
     showStatus(`Successfully loaded: ${url}`, 'success');
-    
-    // Clean up the iframe when done
-    setTimeout(() => {
-      iframe.contentDocument.body.removeEventListener('click', stopEvent);
-      document.body.removeChild(iframe);
-    }, 1000);
+    showAlert('URL loaded successfully! Click any element to inspect fonts.', 'success');
     
   } catch (error) {
     console.error('Error fetching URL:', error);
     showStatus(`Error: ${error.message}`, 'error');
+    showAlert(error.message, 'error');
+  } finally {
+    fetchBtn.disabled = false;
+    fetchBtn.innerHTML = '<i class="fas fa-search"></i> Analyze URL';
   }
 }
 
@@ -147,6 +173,12 @@ function showStatus(message, type) {
 
 // Initialize element inspection
 function initializeElementInspection(element) {
+  // Remove previous event listeners if any
+  element.removeEventListener('mouseover', handleMouseOver);
+  element.removeEventListener('click', handleElementClick);
+  element.removeEventListener('click', stopEvent, true);
+  
+  // Add new event listeners
   element.addEventListener('mouseover', handleMouseOver);
   element.addEventListener('click', handleElementClick);
   element.addEventListener('click', stopEvent, true);
@@ -161,6 +193,7 @@ function stopEvent(e) {
 // Handle mouseover event
 function handleMouseOver(e) {
   const rect = e.target.getBoundingClientRect();
+  highlightBox.style.display = 'block';
   highlightBox.style.top = rect.top + window.scrollY + 'px';
   highlightBox.style.left = rect.left + window.scrollX + 'px';
   highlightBox.style.width = rect.width + 'px';
@@ -171,23 +204,25 @@ function handleMouseOver(e) {
 function handleElementClick(e) {
   currentElement = e.target;
   inspectElement(currentElement);
+  highlightBox.style.display = 'none';
 }
 
 // Inspect element
 function inspectElement(el) {
-  const style = window.getComputedStyle(el);
-  const tag = el.tagName.toLowerCase();
-  const fontFamily = style.fontFamily;
-  const fontSize = style.fontSize;
-  const fontWeight = style.fontWeight;
-  const fontStyle = style.fontStyle;
-  const lineHeight = style.lineHeight;
-  const color = style.color;
-  const className = el.className || 'none';
-  const id = el.id || 'none';
-  const textContent = el.textContent ? el.textContent.trim().substring(0, 50) + (el.textContent.trim().length > 50 ? '...' : '') : '';
+  try {
+    const style = window.getComputedStyle(el);
+    const tag = el.tagName.toLowerCase();
+    const fontFamily = style.fontFamily;
+    const fontSize = style.fontSize;
+    const fontWeight = style.fontWeight;
+    const fontStyle = style.fontStyle;
+    const lineHeight = style.lineHeight;
+    const color = style.color;
+    const className = el.className || 'none';
+    const id = el.id || 'none';
+    const textContent = el.textContent ? el.textContent.trim().substring(0, 50) + (el.textContent.trim().length > 50 ? '...' : '') : '';
 
-  latestCSS = `
+    latestCSS = `
 font-family: ${fontFamily};
 font-size: ${fontSize};
 font-weight: ${fontWeight};
@@ -195,23 +230,23 @@ font-style: ${fontStyle};
 line-height: ${lineHeight};
 color: ${color};`;
 
-  fontData = {
-    tag,
-    className,
-    id,
-    fontFamily,
-    fontSize,
-    fontWeight,
-    fontStyle,
-    lineHeight,
-    color,
-    textContent,
-    fullCSS: latestCSS.trim(),
-    timestamp: new Date().toISOString(),
-    sourceUrl: urlInput.value.trim() || window.location.href
-  };
+    fontData = {
+      tag,
+      className,
+      id,
+      fontFamily,
+      fontSize,
+      fontWeight,
+      fontStyle,
+      lineHeight,
+      color,
+      textContent,
+      fullCSS: latestCSS.trim(),
+      timestamp: new Date().toISOString(),
+      sourceUrl: urlInput.value.trim() || window.location.href
+    };
 
-  panel.innerHTML = `
+    panel.innerHTML = `
 <b>Tag:</b> &lt;${tag}&gt;<br>
 <b>Class:</b> ${className}<br>
 <b>ID:</b> ${id}<br>
@@ -223,6 +258,10 @@ color: ${color};`;
 <b>Line Height:</b> ${lineHeight}<br>
 <b>Color:</b> <span style="color:${color}">${color}</span><br><br>
 <pre>${latestCSS.trim()}</pre>`;
+  } catch (error) {
+    console.error('Error inspecting element:', error);
+    showAlert('Error inspecting element. Please try another element.', 'error');
+  }
 }
 
 // Copy CSS to clipboard
@@ -233,6 +272,9 @@ function copyCSS() {
   }
   navigator.clipboard.writeText(latestCSS.trim()).then(() => {
     showAlert("CSS copied to clipboard!", 'success');
+  }).catch(err => {
+    showAlert("Failed to copy CSS. Please try again.", 'error');
+    console.error('Copy failed:', err);
   });
 }
 
@@ -255,15 +297,22 @@ function exportAsJSON() {
     return;
   }
   
-  const dataStr = JSON.stringify(fontData, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-  
-  const exportFileDefaultName = `fontpeek-${new Date().toISOString().slice(0,10)}.json`;
-  
-  const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
-  linkElement.setAttribute('download', exportFileDefaultName);
-  linkElement.click();
+  try {
+    const dataStr = JSON.stringify(fontData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `fontpeek-${new Date().toISOString().slice(0,10)}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    showAlert("JSON exported successfully!", 'success');
+  } catch (error) {
+    showAlert("Failed to export JSON. Please try again.", 'error');
+    console.error('Export failed:', error);
+  }
 }
 
 // Upload HTML
@@ -276,35 +325,60 @@ function handleHTMLUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
   
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    currentHTMLContent = e.target.result;
-    
-    // Create a sandboxed iframe to parse the HTML
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-    
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(currentHTMLContent);
-    iframe.contentDocument.close();
-    
-    // Initialize inspection on the iframe content
-    initializeElementInspection(iframe.contentDocument.body);
-    
-    showAlert("HTML file loaded successfully. You can now inspect elements.", 'success');
-    
-    // Clean up the iframe when done
-    setTimeout(() => {
-      iframe.contentDocument.body.removeEventListener('click', stopEvent);
-      document.body.removeChild(iframe);
-    }, 1000);
-  };
-  reader.readAsText(file);
+  try {
+    showStatus('Loading HTML file...', 'loading');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      currentHTMLContent = e.target.result;
+      
+      // Clean up previous iframe if exists
+      if (activeIframe) {
+        document.body.removeChild(activeIframe);
+        activeIframe = null;
+      }
+
+      // Create a sandboxed iframe to parse the HTML
+      activeIframe = document.createElement('iframe');
+      activeIframe.sandbox = 'allow-same-origin';
+      activeIframe.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+        z-index: 9990;
+        background: white;
+      `;
+      document.body.appendChild(activeIframe);
+      
+      activeIframe.contentDocument.open();
+      activeIframe.contentDocument.write(currentHTMLContent);
+      activeIframe.contentDocument.close();
+      
+      // Initialize inspection on the iframe content
+      initializeElementInspection(activeIframe.contentDocument.body);
+      
+      showStatus('HTML file loaded successfully', 'success');
+      showAlert('HTML file loaded! Click any element to inspect fonts.', 'success');
+    };
+    reader.onerror = function() {
+      throw new Error('Failed to read file');
+    };
+    reader.readAsText(file);
+  } catch (error) {
+    console.error('Error loading HTML:', error);
+    showStatus(`Error: ${error.message}`, 'error');
+    showAlert(error.message, 'error');
+  }
 }
 
 // Show alert message
 function showAlert(message, type) {
+  // Remove existing alerts
+  const existingAlerts = document.querySelectorAll('.alert');
+  existingAlerts.forEach(alert => alert.remove());
+  
   const alertDiv = document.createElement('div');
   alertDiv.className = `alert alert-${type}`;
   alertDiv.textContent = message;
@@ -312,7 +386,10 @@ function showAlert(message, type) {
   document.body.appendChild(alertDiv);
   
   setTimeout(() => {
-    alertDiv.remove();
+    alertDiv.style.opacity = '0';
+    setTimeout(() => {
+      alertDiv.remove();
+    }, 300);
   }, 3000);
 }
 
