@@ -13,35 +13,101 @@
   
   <title>FontPeek Pro - Advanced Font Inspector</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
-<div id="urlAnalyzer">
-  <h2>URL Analyzer</h2>
-  <div class="input-group">
-    <input type="text" id="urlInput" placeholder="Enter URL (e.g., https://example.com)">
-    <button id="fetchBtn">Analyze URL</button>
+<header class="main-header">
+  <div class="header-content">
+    <h1><i class="fas fa-font"></i> FontPeek Pro</h1>
+    <p class="tagline">Advanced Web Typography Inspector</p>
   </div>
-  <div id="urlStatus"></div>
-</div>
+  <div class="ad-slot ad-header">
+    <!-- Header Ad Slot -->
+    <div class="ad-placeholder">Advertisement</div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="url-analyzer-section">
+    <div class="card">
+      <h2><i class="fas fa-link"></i> URL Analyzer</h2>
+      <div class="input-group">
+        <input type="text" id="urlInput" placeholder="Enter URL (e.g., https://example.com)">
+        <button id="fetchBtn" class="primary-btn">
+          <i class="fas fa-search"></i> Analyze URL
+        </button>
+      </div>
+      <div id="urlStatus" class="status-message"></div>
+    </div>
+  </section>
+
+  <section class="content-section">
+    <div class="card">
+      <h2><i class="fas fa-info-circle"></i> About FontPeek Pro</h2>
+      <div id="contentArea">
+        <p>Welcome to FontPeek Pro, the ultimate tool for web designers and developers to inspect fonts on any webpage.</p>
+        <p>Simply enter a URL above to analyze any website's typography, or use the inspector tool on the right to examine fonts on this page.</p>
+        <p>Features include:</p>
+        <ul>
+          <li>Live font inspection</li>
+          <li>CSS property analysis</li>
+          <li>Dark/light mode</li>
+          <li>Export options (PDF, JSON)</li>
+          <li>HTML file upload</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="ad-slot ad-middle">
+    <!-- Middle Ad Slot -->
+    <div class="ad-placeholder">Advertisement</div>
+  </div>
+</main>
 
 <div id="infoPanel">
-  <h2>Font Inspector</h2>
-  <div class="button-group">
-    <button onclick="copyCSS()">Copy CSS</button>
-    <button onclick="exportAsPDF()">Export PDF</button>
-    <button onclick="exportAsJSON()">Export JSON</button>
-    <button onclick="uploadHTML()">Upload HTML</button>
+  <div class="panel-header">
+    <h2><i class="fas fa-eye-dropper"></i> Font Inspector</h2>
+    <div class="button-group">
+      <button onclick="copyCSS()" class="panel-btn">
+        <i class="fas fa-copy"></i> Copy CSS
+      </button>
+      <button onclick="exportAsPDF()" class="panel-btn">
+        <i class="fas fa-file-pdf"></i> PDF
+      </button>
+      <button onclick="exportAsJSON()" class="panel-btn">
+        <i class="fas fa-file-code"></i> JSON
+      </button>
+      <button onclick="uploadHTML()" class="panel-btn">
+        <i class="fas fa-upload"></i> Upload
+      </button>
+    </div>
   </div>
   <div id="fontInfo">Click any element to inspect...</div>
 </div>
 <div id="highlightBox"></div>
 
-<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">☀️</button>
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+  <i class="fas fa-moon"></i>
+</button>
 
 <input type="file" id="htmlUpload" accept=".html,.htm" style="display: none;">
 
-<script src="script.js"></script>
+<footer class="main-footer">
+  <div class="footer-content">
+    <div class="footer-links">
+      <a href="#">Home</a>
+      <a href="#">About</a>
+      <a href="#">Contact</a>
+      <a href="#">Privacy Policy</a>
+    </div>
+    <div class="copyright">
+      &copy; <span id="currentYear"></span> FontPeek Pro. All rights reserved.
+    </div>
+  </div>
+</footer>
 
+<script src="script.js"></script>
 </body>
 </html>
