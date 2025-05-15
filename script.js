@@ -1,3 +1,4 @@
+// DOM Elements
 const panel = document.getElementById('fontInfo');
 const highlightBox = document.getElementById('highlightBox');
 const themeToggle = document.getElementById('themeToggle');
@@ -5,11 +6,22 @@ const htmlUpload = document.getElementById('htmlUpload');
 const urlInput = document.getElementById('urlInput');
 const fetchBtn = document.getElementById('fetchBtn');
 const urlStatus = document.getElementById('urlStatus');
+const currentYear = document.getElementById('currentYear');
+const infoPanel = document.getElementById('infoPanel');
 
+// Global Variables
 let latestCSS = '';
 let currentElement = null;
 let fontData = {};
 let currentHTMLContent = '';
+
+// Initialize the application
+function init() {
+  initTheme();
+  setupEventListeners();
+  setCurrentYear();
+  activateInfoPanel();
+}
 
 // Initialize theme
 function initTheme() {
@@ -29,22 +41,41 @@ function toggleTheme() {
 
 // Update theme button icon
 function updateThemeButton(theme) {
-  themeToggle.textContent = theme === 'dark' ? '🌙' : '☀️';
+  const icon = theme === 'dark' ? 'fa-sun' : 'fa-moon';
+  themeToggle.innerHTML = `<i class="fas ${icon}"></i>`;
 }
 
-// Handle URL fetching and analysis
-fetchBtn.addEventListener('click', async () => {
+// Set current year in footer
+function setCurrentYear() {
+  currentYear.textContent = new Date().getFullYear();
+}
+
+// Activate info panel
+function activateInfoPanel() {
+  infoPanel.classList.add('active');
+}
+
+// Setup event listeners
+function setupEventListeners() {
+  themeToggle.addEventListener('click', toggleTheme);
+  fetchBtn.addEventListener('click', fetchAndAnalyzeURL);
+  htmlUpload.addEventListener('change', handleHTMLUpload);
+  
+  // Initialize element inspection on the main content
+  initializeElementInspection(document.body);
+}
+
+// Fetch and analyze URL
+async function fetchAndAnalyzeURL() {
   const url = urlInput.value.trim();
   if (!url) {
-    urlStatus.textContent = 'Please enter a valid URL';
-    urlStatus.style.color = 'red';
+    showStatus('Please enter a valid URL', 'error');
     return;
   }
 
   try {
-    urlStatus.textContent = 'Fetching URL content...';
-    urlStatus.style.color = 'inherit';
-
+    showStatus('Fetching URL content...', 'loading');
+    
     // Use a proxy to avoid CORS issues
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
     const response = await fetch(proxyUrl);
@@ -56,51 +87,93 @@ fetchBtn.addEventListener('click', async () => {
     const data = await response.json();
     currentHTMLContent = data.contents;
     
-    // Create a temporary iframe to parse the HTML
+    // Create a sandboxed iframe to parse the HTML
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
     
     iframe.contentDocument.open();
-    iframe.contentDocument.write(currentHTMLContent);
+    iframe.contentDocument.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <base href="${url}" target="_blank">
+        <style>
+          * { cursor: crosshair !important; }
+          :hover { outline: 2px dashed #4a6fa5 !important; }
+        </style>
+      </head>
+      <body>${currentHTMLContent}</body>
+      </html>
+    `);
     iframe.contentDocument.close();
     
-    // Replace the current document with the fetched content
-    document.body.innerHTML = iframe.contentDocument.body.innerHTML;
+    // Initialize inspection on the iframe content
+    initializeElementInspection(iframe.contentDocument.body);
     
-    // Re-initialize event listeners on the new content
-    initializeEventListeners();
+    showStatus(`Successfully loaded: ${url}`, 'success');
     
-    urlStatus.textContent = `Successfully loaded: ${url}`;
-    urlStatus.style.color = 'green';
-    
-    // Remove the iframe after use
-    setTimeout(() => document.body.removeChild(iframe), 1000);
+    // Clean up the iframe when done
+    setTimeout(() => {
+      iframe.contentDocument.body.removeEventListener('click', stopEvent);
+      document.body.removeChild(iframe);
+    }, 1000);
     
   } catch (error) {
     console.error('Error fetching URL:', error);
-    urlStatus.textContent = `Error: ${error.message}`;
-    urlStatus.style.color = 'red';
+    showStatus(`Error: ${error.message}`, 'error');
   }
-});
-
-// Initialize event listeners for element inspection
-function initializeEventListeners() {
-  document.addEventListener('mouseover', function(e) {
-    const rect = e.target.getBoundingClientRect();
-    highlightBox.style.top = rect.top + window.scrollY + 'px';
-    highlightBox.style.left = rect.left + window.scrollX + 'px';
-    highlightBox.style.width = rect.width + 'px';
-    highlightBox.style.height = rect.height + 'px';
-  });
-
-  document.addEventListener('click', function(e) {
-    e.preventDefault();
-    currentElement = e.target;
-    inspectElement(currentElement);
-  });
 }
 
+// Show status message
+function showStatus(message, type) {
+  urlStatus.textContent = message;
+  urlStatus.className = 'status-message';
+  
+  switch(type) {
+    case 'error':
+      urlStatus.style.color = '#ff6b6b';
+      break;
+    case 'success':
+      urlStatus.style.color = '#51cf66';
+      break;
+    case 'loading':
+      urlStatus.style.color = '#339af0';
+      break;
+    default:
+      urlStatus.style.color = 'inherit';
+  }
+}
+
+// Initialize element inspection
+function initializeElementInspection(element) {
+  element.addEventListener('mouseover', handleMouseOver);
+  element.addEventListener('click', handleElementClick);
+  element.addEventListener('click', stopEvent, true);
+}
+
+// Stop event propagation
+function stopEvent(e) {
+  e.stopPropagation();
+  e.preventDefault();
+}
+
+// Handle mouseover event
+function handleMouseOver(e) {
+  const rect = e.target.getBoundingClientRect();
+  highlightBox.style.top = rect.top + window.scrollY + 'px';
+  highlightBox.style.left = rect.left + window.scrollX + 'px';
+  highlightBox.style.width = rect.width + 'px';
+  highlightBox.style.height = rect.height + 'px';
+}
+
+// Handle element click
+function handleElementClick(e) {
+  currentElement = e.target;
+  inspectElement(currentElement);
+}
+
+// Inspect element
 function inspectElement(el) {
   const style = window.getComputedStyle(el);
   const tag = el.tagName.toLowerCase();
@@ -134,7 +207,8 @@ color: ${color};`;
     color,
     textContent,
     fullCSS: latestCSS.trim(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    sourceUrl: urlInput.value.trim() || window.location.href
   };
 
   panel.innerHTML = `
@@ -151,30 +225,33 @@ color: ${color};`;
 <pre>${latestCSS.trim()}</pre>`;
 }
 
+// Copy CSS to clipboard
 function copyCSS() {
   if (!latestCSS) {
-    alert("No CSS to copy. Please inspect an element first.");
+    showAlert("No CSS to copy. Please inspect an element first.", 'error');
     return;
   }
   navigator.clipboard.writeText(latestCSS.trim()).then(() => {
-    alert("CSS copied to clipboard!");
+    showAlert("CSS copied to clipboard!", 'success');
   });
 }
 
+// Export as PDF
 function exportAsPDF() {
   if (!fontData || !fontData.tag) {
-    alert("No font data to export. Please inspect an element first.");
+    showAlert("No font data to export. Please inspect an element first.", 'error');
     return;
   }
   
   // In a real implementation, you would use a PDF generation library like jsPDF
-  alert("PDF export would be generated here. In a real implementation, this would use a library like jsPDF.");
+  showAlert("PDF export would be generated here. In a real implementation, this would use a library like jsPDF.", 'info');
   console.log("PDF Export Data:", fontData);
 }
 
+// Export as JSON
 function exportAsJSON() {
   if (!fontData || !fontData.tag) {
-    alert("No font data to export. Please inspect an element first.");
+    showAlert("No font data to export. Please inspect an element first.", 'error');
     return;
   }
   
@@ -189,11 +266,13 @@ function exportAsJSON() {
   linkElement.click();
 }
 
+// Upload HTML
 function uploadHTML() {
   htmlUpload.click();
 }
 
-htmlUpload.addEventListener('change', function(e) {
+// Handle HTML upload
+function handleHTMLUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
   
@@ -201,7 +280,7 @@ htmlUpload.addEventListener('change', function(e) {
   reader.onload = function(e) {
     currentHTMLContent = e.target.result;
     
-    // Create a temporary iframe to parse the HTML
+    // Create a sandboxed iframe to parse the HTML
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
@@ -210,21 +289,32 @@ htmlUpload.addEventListener('change', function(e) {
     iframe.contentDocument.write(currentHTMLContent);
     iframe.contentDocument.close();
     
-    // Replace the current document with the uploaded content
-    document.body.innerHTML = iframe.contentDocument.body.innerHTML;
+    // Initialize inspection on the iframe content
+    initializeElementInspection(iframe.contentDocument.body);
     
-    // Re-initialize event listeners on the new content
-    initializeEventListeners();
+    showAlert("HTML file loaded successfully. You can now inspect elements.", 'success');
     
-    alert("HTML file loaded successfully. You can now inspect elements.");
-    
-    // Remove the iframe after use
-    setTimeout(() => document.body.removeChild(iframe), 1000);
+    // Clean up the iframe when done
+    setTimeout(() => {
+      iframe.contentDocument.body.removeEventListener('click', stopEvent);
+      document.body.removeChild(iframe);
+    }, 1000);
   };
   reader.readAsText(file);
-});
+}
 
-// Initialize
-initTheme();
-themeToggle.addEventListener('click', toggleTheme);
-initializeEventListeners();
+// Show alert message
+function showAlert(message, type) {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert alert-${type}`;
+  alertDiv.textContent = message;
+  
+  document.body.appendChild(alertDiv);
+  
+  setTimeout(() => {
+    alertDiv.remove();
+  }, 3000);
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', init);
